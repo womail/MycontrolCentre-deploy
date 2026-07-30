@@ -63,7 +63,11 @@ msg_ok "Fetched MyControl Centre"
 
 msg_info "Configuring Environment"
 cd /opt/mycontrol-centre
-cp .env.example .env
+if [[ ! -f .env.example ]]; then
+  msg_error ".env.example missing from source package (re-publish deploy tarball)"
+  exit 1
+fi
+$STD cp -f .env.example .env
 
 set_env() {
   local key="$1"
