@@ -21,23 +21,43 @@ NODE_VERSION="22" setup_nodejs
 msg_ok "Installed Node.js"
 
 msg_info "Fetching MyControl Centre"
+MCC_TARBALL_URL="${MCC_TARBALL_URL:-https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main/artifacts/mycontrol-centre.tar.gz}"
 MCC_GIT_URL="${MCC_GIT_URL:-https://github.com/womail/MycontrolCentre.git}"
 MCC_GIT_BRANCH="${MCC_GIT_BRANCH:-main}"
+MCC_USE_GIT="${MCC_USE_GIT:-0}"
 export GIT_TERMINAL_PROMPT=0
 export GIT_ASKPASS=/bin/false
 
-if [[ -n "${MCC_TARBALL_URL:-}" ]]; then
+mcc_fetch_source() {
+  if [[ -d /opt/mycontrol-centre/.git || -f /opt/mycontrol-centre/package.json ]]; then
+    msg_ok "Using existing /opt/mycontrol-centre checkout"
+    return 0
+  fi
+  $STD rm -rf /opt/mycontrol-centre
   $STD mkdir -p /opt/mycontrol-centre
-  $STD curl -fsSL "${MCC_TARBALL_URL}" | $STD tar -xz -C /opt/mycontrol-centre --strip-components=1
-elif [[ -d /opt/mycontrol-centre/.git || -f /opt/mycontrol-centre/package.json ]]; then
-  msg_ok "Using existing /opt/mycontrol-centre checkout"
-else
+
+  if [[ "${MCC_USE_GIT}" == "1" ]]; then
+    $STD git clone --depth 1 --branch "${MCC_GIT_BRANCH}" "${MCC_GIT_URL}" /opt/mycontrol-centre
+    return 0
+  fi
+
+  if [[ -n "${MCC_TARBALL_URL:-}" ]] && curl -fsSL "${MCC_TARBALL_URL}" | $STD tar -xz -C /opt/mycontrol-centre; then
+    return 0
+  fi
+
+  msg_info "Public tarball unavailable; trying git clone"
+  $STD rm -rf /opt/mycontrol-centre
   if ! $STD git clone --depth 1 --branch "${MCC_GIT_BRANCH}" "${MCC_GIT_URL}" /opt/mycontrol-centre; then
-    msg_error "Could not clone ${MCC_GIT_URL} (private repos need a token on the Proxmox host)"
-    msg_error "Re-run: MCC_GIT_URL='https://x-access-token:TOKEN@github.com/womail/MycontrolCentre.git' bash -c \"\$(curl -fsSL ...)\""
-    msg_error "Or set MCC_TARBALL_URL to a public tarball, make the repo public, or use proxmox-lxc-deploy.sh --source-dir"
+    msg_error "Could not fetch MyControl Centre source"
+    msg_error "Ensure ${MCC_TARBALL_URL} exists (CI publish to MycontrolCentre-deploy), or run with:"
+    msg_error "  MCC_GIT_URL='https://x-access-token:TOKEN@github.com/womail/MycontrolCentre.git' MCC_USE_GIT=1 bash -c \"\$(curl -fsSL ...)\""
     exit 1
   fi
+}
+
+if ! mcc_fetch_source; then
+  msg_error "Could not fetch MyControl Centre source"
+  exit 1
 fi
 msg_ok "Fetched MyControl Centre"
 
@@ -75,7 +95,13 @@ msg_info "Building Application"
 $STD env NODE_ENV=production npm run build
 msg_ok "Built Application"
 
-git -C /opt/mycontrol-centre rev-parse --short HEAD >~/.mycontrol-centre
+if [[ -f /opt/mycontrol-centre/.mcc-source-sha ]]; then
+  head -c 7 /opt/mycontrol-centre/.mcc-source-sha >~/.mycontrol-centre
+elif git -C /opt/mycontrol-centre rev-parse --short HEAD >/dev/null 2>&1; then
+  git -C /opt/mycontrol-centre rev-parse --short HEAD >~/.mycontrol-centre
+else
+  echo unknown >~/.mycontrol-centre
+fi
 
 msg_info "Creating Service"
 cat <<'EOF' >/etc/systemd/system/mycontrol-centre.service
