@@ -17,6 +17,16 @@ mode=advanced bash -c "$(curl -fsSL https://raw.githubusercontent.com/womail/Myc
 
 No GitHub token is required on Proxmox — the install script pulls the public tarball from this repo.
 
+## VM install (Debian 12)
+
+Inside a fresh Debian VM (SSH as root):
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main/proxmox-vm-install.sh)"
+```
+
+Full guide: [MycontrolCentre docs — proxmox-vm-install.md](https://github.com/womail/MycontrolCentre/blob/main/docs/proxmox-vm-install.md)
+
 ## Requirements
 
 - Proxmox VE with `pct` and `pveam`
@@ -27,7 +37,8 @@ No GitHub token is required on Proxmox — the install script pulls the public t
 | File | Purpose |
 |------|---------|
 | `proxmox-create-lxc.sh` | CT wizard (community-scripts engine) |
-| `proxmox-lxc-deploy.sh` | Standalone deploy (no build.func) |
+| `proxmox-vm-install.sh` | In-VM install (Debian 12 + systemd) |
+| `proxmox-lxc-deploy.sh` | Standalone LXC deploy (no build.func) |
 | `community-scripts/install/mycontrol-centre-install.sh` | In-container install |
 | `artifacts/mycontrol-centre.tar.gz` | Public app source snapshot (updated by CI) |
 | `artifacts/source-version.txt` | Git SHA / build time for the tarball |
