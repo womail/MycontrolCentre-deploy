@@ -20,11 +20,26 @@ msg_info "Installing Node.js"
 NODE_VERSION="22" setup_nodejs
 msg_ok "Installed Node.js"
 
-msg_info "Cloning MyControl Centre"
+msg_info "Fetching MyControl Centre"
 MCC_GIT_URL="${MCC_GIT_URL:-https://github.com/womail/MycontrolCentre.git}"
 MCC_GIT_BRANCH="${MCC_GIT_BRANCH:-main}"
-$STD git clone --depth 1 --branch "${MCC_GIT_BRANCH}" "${MCC_GIT_URL}" /opt/mycontrol-centre
-msg_ok "Cloned MyControl Centre"
+export GIT_TERMINAL_PROMPT=0
+export GIT_ASKPASS=/bin/false
+
+if [[ -n "${MCC_TARBALL_URL:-}" ]]; then
+  $STD mkdir -p /opt/mycontrol-centre
+  $STD curl -fsSL "${MCC_TARBALL_URL}" | $STD tar -xz -C /opt/mycontrol-centre --strip-components=1
+elif [[ -d /opt/mycontrol-centre/.git || -f /opt/mycontrol-centre/package.json ]]; then
+  msg_ok "Using existing /opt/mycontrol-centre checkout"
+else
+  if ! $STD git clone --depth 1 --branch "${MCC_GIT_BRANCH}" "${MCC_GIT_URL}" /opt/mycontrol-centre; then
+    msg_error "Could not clone ${MCC_GIT_URL} (private repos need a token on the Proxmox host)"
+    msg_error "Re-run: MCC_GIT_URL='https://x-access-token:TOKEN@github.com/womail/MycontrolCentre.git' bash -c \"\$(curl -fsSL ...)\""
+    msg_error "Or set MCC_TARBALL_URL to a public tarball, make the repo public, or use proxmox-lxc-deploy.sh --source-dir"
+    exit 1
+  fi
+fi
+msg_ok "Fetched MyControl Centre"
 
 msg_info "Configuring Environment"
 cd /opt/mycontrol-centre

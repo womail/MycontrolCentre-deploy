@@ -13,8 +13,8 @@
 # Advanced wizard:
 #   mode=advanced bash -c "$(curl -fsSL https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main/proxmox-create-lxc.sh)"
 #
-# Private app repo (inside the CT after creation):
-#   MCC_GIT_URL='https://github.com/you/MycontrolCentre.git' bash -c "$(curl -fsSL ...)"
+# Private app repo — pass a PAT on the Proxmox host (injected into the CT install script):
+#   MCC_GIT_URL='https://x-access-token:TOKEN@github.com/womail/MycontrolCentre.git' bash -c "$(curl -fsSL ...)"
 #
 # Canonical copy: https://github.com/womail/MycontrolCentre-deploy
 # Docs: https://community-scripts.org/docs/ct/readme
@@ -22,7 +22,7 @@
 # Copyright (c) 2021-2026 MyControl Centre contributors
 # License: MIT — uses community-scripts build.func (MIT)
 
-MCC_SCRIPT_REV="3"
+MCC_SCRIPT_REV="4"
 echo "MyControl Centre LXC installer (rev ${MCC_SCRIPT_REV})"
 
 MCC_DEPLOY_RAW="${MCC_DEPLOY_RAW:-https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main}"
@@ -77,6 +77,14 @@ if ! mcc_fetch "${_mcc_install_root}/install/mycontrol-centre-install.sh" \
   echo "ERROR: Failed to download install script from deploy repo." >&2
   exit 1
 fi
+_mcc_install_tmp="$(mktemp "${_mcc_install_root}/install/mycontrol-centre-install.XXXXXX")"
+{
+  printf 'export MCC_GIT_URL=%q\n' "${MCC_GIT_URL:-https://github.com/womail/MycontrolCentre.git}"
+  printf 'export MCC_GIT_BRANCH=%q\n' "${MCC_GIT_BRANCH:-main}"
+  [[ -n "${MCC_TARBALL_URL:-}" ]] && printf 'export MCC_TARBALL_URL=%q\n' "${MCC_TARBALL_URL}"
+  cat "${_mcc_install_root}/install/mycontrol-centre-install.sh"
+} >"${_mcc_install_tmp}"
+mv "${_mcc_install_tmp}" "${_mcc_install_root}/install/mycontrol-centre-install.sh"
 export COMMUNITY_SCRIPTS_ROOT="${_mcc_install_root}"
 
 APP="MyControl-Centre"
