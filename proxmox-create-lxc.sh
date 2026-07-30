@@ -2,27 +2,45 @@
 #
 # MyControl Centre — Proxmox VE Helper Scripts (community-scripts) CT entry.
 #
-# Run on the Proxmox shell as root:
+# Public one-liner (Proxmox shell, as root):
 #
 #   bash -c "$(curl -fsSL https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main/proxmox-create-lxc.sh)"
 #
-# Advanced wizard (all prompts):
+# Advanced wizard:
 #   mode=advanced bash -c "$(curl -fsSL https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main/proxmox-create-lxc.sh)"
 #
+# Private app repo (inside the CT after creation):
+#   MCC_GIT_URL='https://github.com/you/MycontrolCentre.git' bash -c "$(curl -fsSL ...)"
+#
+# Canonical copy: https://github.com/womail/MycontrolCentre-deploy
 # Docs: https://community-scripts.org/docs/ct/readme
-# Deploy scripts repo: https://github.com/womail/MycontrolCentre-deploy
 #
 # Copyright (c) 2021-2026 MyControl Centre contributors
 # License: MIT — uses community-scripts build.func (MIT)
 
 MCC_DEPLOY_RAW="${MCC_DEPLOY_RAW:-https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main}"
-export COMMUNITY_SCRIPTS_URL="${MCC_SCRIPTS_URL:-${MCC_DEPLOY_RAW}/community-scripts}"
+MCC_INSTALL_REL="community-scripts/install/mycontrol-centre-install.sh"
 
+# build.func + misc/*.func must come from ProxmoxVED — do NOT point COMMUNITY_SCRIPTS_URL at the deploy repo.
 BUILD_FUNC_URL="${COMMUNITY_SCRIPTS_BUILD_URL:-https://raw.githubusercontent.com/community-scripts/ProxmoxVED/main}/misc/build.func"
 if ! source <(curl -fsSL "$BUILD_FUNC_URL"); then
   echo "ERROR: Failed to download community-scripts build.func from ${BUILD_FUNC_URL}" >&2
   exit 1
 fi
+if ! declare -f is_incus_lxc_backend >/dev/null 2>&1 || ! declare -f header_info >/dev/null 2>&1; then
+  echo "ERROR: community-scripts build.func did not load completely (network or ${BUILD_FUNC_URL})." >&2
+  exit 1
+fi
+
+# Install script lives in the public deploy repo; prefetch for _cs_fetch_text via COMMUNITY_SCRIPTS_ROOT.
+_mcc_install_root="$(mktemp -d /tmp/mcc-cs-root.XXXXXX)"
+trap 'rm -rf "${_mcc_install_root:-}"' EXIT
+mkdir -p "${_mcc_install_root}/install"
+if ! curl -fsSL "${MCC_DEPLOY_RAW}/${MCC_INSTALL_REL}" -o "${_mcc_install_root}/install/mycontrol-centre-install.sh"; then
+  echo "ERROR: Failed to download install script from ${MCC_DEPLOY_RAW}/${MCC_INSTALL_REL}" >&2
+  exit 1
+fi
+export COMMUNITY_SCRIPTS_ROOT="${_mcc_install_root}"
 
 APP="MyControl-Centre"
 var_tags="${var_tags:-control;automation;proxmox;ssh}"
