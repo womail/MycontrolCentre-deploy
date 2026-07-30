@@ -83,6 +83,7 @@ _mcc_install_tmp="$(mktemp "${_mcc_install_root}/install/mycontrol-centre-instal
   printf 'export MCC_TARBALL_URL=%q\n' "${MCC_TARBALL_URL:-${MCC_TARBALL_DEFAULT}}"
   printf 'export MCC_GIT_URL=%q\n' "${MCC_GIT_URL:-https://github.com/womail/MycontrolCentre.git}"
   printf 'export MCC_GIT_BRANCH=%q\n' "${MCC_GIT_BRANCH:-main}"
+  printf 'export MCC_ENV_EXAMPLE_URL=%q\n' "${MCC_ENV_EXAMPLE_URL:-${MCC_DEPLOY_RAW}/artifacts/env.example}"
   printf 'export MCC_USE_GIT=%q\n' "${MCC_USE_GIT:-0}"
   cat "${_mcc_install_root}/install/mycontrol-centre-install.sh"
 } >"${_mcc_install_tmp}"

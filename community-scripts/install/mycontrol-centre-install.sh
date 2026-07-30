@@ -28,8 +28,12 @@ MCC_USE_GIT="${MCC_USE_GIT:-0}"
 export GIT_TERMINAL_PROMPT=0
 export GIT_ASKPASS=/bin/false
 
+mcc_has_valid_source() {
+  [[ -f /opt/mycontrol-centre/package.json && -f /opt/mycontrol-centre/.env.example ]]
+}
+
 mcc_fetch_source() {
-  if [[ -d /opt/mycontrol-centre/.git || -f /opt/mycontrol-centre/package.json ]]; then
+  if mcc_has_valid_source; then
     msg_ok "Using existing /opt/mycontrol-centre checkout"
     return 0
   fi
@@ -63,9 +67,13 @@ msg_ok "Fetched MyControl Centre"
 
 msg_info "Configuring Environment"
 cd /opt/mycontrol-centre
+MCC_ENV_EXAMPLE_URL="${MCC_ENV_EXAMPLE_URL:-https://raw.githubusercontent.com/womail/MycontrolCentre-deploy/main/artifacts/env.example}"
 if [[ ! -f .env.example ]]; then
-  msg_error ".env.example missing from source package (re-publish deploy tarball)"
-  exit 1
+  msg_info "Fetching .env.example"
+  if ! curl -fsSL "${MCC_ENV_EXAMPLE_URL}" -o .env.example; then
+    msg_error ".env.example missing and could not download from ${MCC_ENV_EXAMPLE_URL}"
+    exit 1
+  fi
 fi
 $STD cp -f .env.example .env
 
